@@ -15,15 +15,15 @@ class DataHandler(object):
         self.data_name = data_name
 
         # Load features
-        features_file_name = os.path.join('../data', data_name, 'features')
+        features_file_name = os.path.join('./data', data_name, 'features')
         self.features = np.loadtxt(features_file_name, delimiter=',')
 
         # Load labels
-        labels_file_name = os.path.join('../data', data_name, 'labels')
+        labels_file_name = os.path.join('./data', data_name, 'labels')
         labels = np.loadtxt(labels_file_name, dtype = np.int64, delimiter=',')
         
         # Load graph
-        edges_file_name = os.path.join('../data', data_name, 'edges', delimiter=',')
+        edges_file_name = os.path.join('./data', data_name, 'edges', delimiter=',')
         self.adj_lists = defaultdict(set)
         with open(edges_file_name) as fp:
             for i, line in enumerate(fp):
@@ -45,11 +45,11 @@ class DataHandler(object):
         self.label_size = np.unique(self.labels).shape[0]
 
         # Generate train & valid data (nodes)
-        train_file_name = os.path.join('../data', data_name, 'train_nodes')
+        train_file_name = os.path.join('./data', data_name, 'train_nodes')
         self.train_nodes = np.loadtxt(train_file_name, dtype = np.int64)
         self.train_size = self.train_nodes.shape[0]
 
-        valid_file_name = os.path.join('../data', data_name, 'val_nodes')
+        valid_file_name = os.path.join('./data', data_name, 'val_nodes')
         self.val_nodes = np.loadtxt(valid_file_name, dtype = np.int64)
         self.valid_size = self.val_nodes.shape[0]
 

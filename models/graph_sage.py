@@ -6,7 +6,6 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-sys.path.append('..')
 from layers.sage_conv import SAGEConv
 from layers.sampler import Sampler
 from layers.aggregator import Aggregator

@@ -1,6 +1,9 @@
 # Output results
 /res
 
+# Temporary files
+M
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]

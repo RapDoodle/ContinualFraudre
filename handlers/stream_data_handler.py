@@ -17,21 +17,21 @@ class StreamDataHandler(DataHandler):
         self.t = t
 
         # Load features
-        features_file_name = os.path.join('../data', data_name, 'features')
+        features_file_name = os.path.join('./data', data_name, 'features')
         self.features = np.loadtxt(features_file_name, delimiter=',')
 
         # Load labels
-        labels_file_name = os.path.join('../data', data_name, 'labels')
+        labels_file_name = os.path.join('./data', data_name, 'labels')
         labels = np.loadtxt(labels_file_name, dtype = np.int64, delimiter=',')
 
         # Load train / valid nodes
-        train_file_name = os.path.join('../data', data_name, 'train_nodes')
+        train_file_name = os.path.join('./data', data_name, 'train_nodes')
         self.train_all_nodes_list = np.loadtxt(train_file_name, dtype = np.int64, delimiter=',')
-        valid_file_name = os.path.join('../data', data_name, 'val_nodes')
+        valid_file_name = os.path.join('./data', data_name, 'val_nodes')
         self.valid_all_nodes_list = np.loadtxt(valid_file_name, dtype = np.int64, delimiter=',')
 
         # Load graph
-        stream_dir_name = os.path.join('../data', data_name, 'stream')
+        stream_dir_name = os.path.join('./data', data_name, 'stream')
         self.nodes = set()
         self.train_cha_nodes_list, self.train_old_nodes_list = set(), set()
         self.valid_cha_nodes_list, self.valid_old_nodes_list = set(), set()
@@ -39,7 +39,7 @@ class StreamDataHandler(DataHandler):
         
         begin_time = 0
         end_time = t
-        for tt in range(0, len(os.listdir(os.path.join('../data', data_name, 'stream')))):
+        for tt in range(0, len(os.listdir(os.path.join('./data', data_name, 'stream')))):
             edges_file_name = os.path.join(stream_dir_name, str(tt), 'edges')
             with open(edges_file_name) as fp:
                 for i, line in enumerate(fp):
