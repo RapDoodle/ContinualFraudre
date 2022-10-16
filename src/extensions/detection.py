@@ -102,7 +102,7 @@ class AdjListsHandler(StreamDataHandler):
         begin_time = max(0, t - 9)
         end_time = t
         for tt in range(0, len(os.listdir(os.path.join('../data', data_name, 'stream')))):
-            edges_file_name = os.path.join(stream_dir_name, str(tt))
+            edges_file_name = os.path.join(stream_dir_name, str(tt), 'edges')
             with open(edges_file_name) as fp:
                 for i, line in enumerate(fp):
                     info = line.strip().split(',')
