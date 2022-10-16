@@ -96,16 +96,16 @@ class AdjListsHandler(StreamDataHandler):
         self.t = t
 
         # Load graph
-        stream_edges_dir_name = os.path.join('../data', data_name, 'stream_edges')
+        stream_dir_name = os.path.join('../data', data_name, 'stream')
         self.adj_lists = defaultdict(set)
         
         begin_time = max(0, t - 9)
         end_time = t
-        for tt in range(0, len(os.listdir(os.path.join('../data', data_name, 'stream_edges')))):
-            edges_file_name = os.path.join(stream_edges_dir_name, str(tt))
+        for tt in range(0, len(os.listdir(os.path.join('../data', data_name, 'stream')))):
+            edges_file_name = os.path.join(stream_dir_name, str(tt))
             with open(edges_file_name) as fp:
                 for i, line in enumerate(fp):
-                    info = line.strip().split()
+                    info = line.strip().split(',')
                     node1, node2 = int(info[0]), int(info[1])
                     if tt <= end_time and tt >= begin_time:
                         self.adj_lists[node1].add(node2)

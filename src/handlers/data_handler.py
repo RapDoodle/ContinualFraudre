@@ -14,20 +14,20 @@ class DataHandler(object):
     def load(self, data_name):
         self.data_name = data_name
 
-        # Load attributes
-        attributes_file_name = os.path.join('../data', data_name, 'attributes')
-        self.features = np.loadtxt(attributes_file_name)
+        # Load features
+        features_file_name = os.path.join('../data', data_name, 'features')
+        self.features = np.loadtxt(features_file_name, delimiter=',')
 
         # Load labels
         labels_file_name = os.path.join('../data', data_name, 'labels')
-        labels = np.loadtxt(labels_file_name, dtype = np.int64)
+        labels = np.loadtxt(labels_file_name, dtype = np.int64, delimiter=',')
         
         # Load graph
-        edges_file_name = os.path.join('../data', data_name, 'edges')
+        edges_file_name = os.path.join('../data', data_name, 'edges', delimiter=',')
         self.adj_lists = defaultdict(set)
         with open(edges_file_name) as fp:
             for i, line in enumerate(fp):
-                info = line.strip().split()
+                info = line.strip().split(',')
                 node1, node2 = int(info[0]), int(info[1])
 
                 self.adj_lists[node1].add(node2)
@@ -49,9 +49,9 @@ class DataHandler(object):
         self.train_nodes = np.loadtxt(train_file_name, dtype = np.int64)
         self.train_size = self.train_nodes.shape[0]
 
-        valid_file_name = os.path.join('../data', data_name, 'valid_nodes')
-        self.valid_nodes = np.loadtxt(valid_file_name, dtype = np.int64)
-        self.valid_size = self.valid_nodes.shape[0]
+        valid_file_name = os.path.join('../data', data_name, 'val_nodes')
+        self.val_nodes = np.loadtxt(valid_file_name, dtype = np.int64)
+        self.valid_size = self.val_nodes.shape[0]
 
         self.data_size = self.train_size + self.valid_size
 
@@ -65,9 +65,9 @@ class DataHandler(object):
         np.random.shuffle(self.nodes_list)
         self.valid_size = int(self.data_size * valid_ratio)
         self.train_size = self.data_size - int(self.data_size * valid_ratio)
-        self.valid_nodes = self.nodes_list[ : self.valid_size]
+        self.val_nodes = self.nodes_list[ : self.valid_size]
         self.train_nodes = self.nodes_list[self.valid_size : ]
 
         logging.info('Data: ' + self.data_name + '; Data size: ' + str(self.data_size) \
             + '; Train size: ' + str(len(self.train_nodes)) \
-            + '; Valid size: ' + str(len(self.valid_nodes)))
+            + '; Valid size: ' + str(len(self.val_nodes)))

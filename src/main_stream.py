@@ -65,7 +65,7 @@ def run(args, t):
     + ' / ' + str(sum([len(v) for v in data.adj_lists.values()]) / 2))
     logging.info('Data: ' + data.data_name + '; Data size: ' + str(data.data_size) \
     + '; Train size: ' + str(len(data.train_nodes)) \
-    + '; Valid size: ' + str(len(data.valid_nodes)))
+    + '; Valid size: ' + str(len(data.val_nodes)))
 
 
     if args.new_ratio > 0.0 and t > 0:
@@ -136,13 +136,13 @@ def evaluate(args, t):
     model_handler_cur = ModelHandler(os.path.join(args.save_path, str(t)))
     sage.load_state_dict(model_handler_cur.load('graph_sage.pkl'))
 
-    valid_nodes = data.valid_nodes
+    val_nodes = data.val_nodes
 
-    if len(valid_nodes) == 0:
+    if len(val_nodes) == 0:
         return 0, 0
 
-    valid_output = sage.forward(valid_nodes).data.cpu().numpy().argmax(axis=1)
-    f1, acc = utils.node_classification(data.labels[valid_nodes], valid_output, '')
+    valid_output = sage.forward(val_nodes).data.cpu().numpy().argmax(axis=1)
+    f1, acc = utils.node_classification(data.labels[val_nodes], valid_output, '')
 
     return f1, acc
 
@@ -164,7 +164,7 @@ if __name__ == "__main__":
     print_ans = ['', '', '', '']
     avg_ans = [0.0, 0.0, 0.0, 0.0]
 
-    t_num = len(os.listdir(os.path.join('../data', args.data, 'stream_edges')))
+    t_num = len(os.listdir(os.path.join('../data', args.data, 'stream')))
     args.save_path = os.path.join('../res', args.data)
     
     for t in range(0, t_num):
