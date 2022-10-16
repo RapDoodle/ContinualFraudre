@@ -41,20 +41,40 @@ class StreamDataHandler(DataHandler):
         end_time = t
         for tt in range(0, len(os.listdir(os.path.join('./data', data_name, 'streams')))):
             stream_edges_file_name = os.path.join(stream_dir_name, str(tt), 'edges')
-            with open(stream_edges_file_name) as fp:
-                for i, line in enumerate(fp):
-                    info = line.strip().split(',')
-                    node1, node2 = int(info[0]), int(info[1])
+            stream_train_node_file_name = os.path.join(stream_dir_name, str(tt), 'train_nodes')
+            stream_val_node_file_name = os.path.join(stream_dir_name, str(tt), 'val_nodes')
 
-                    # self.nodes.add(node1)
-                    # self.nodes.add(node2)
+            if tt <= end_time and tt >= begin_time:
+                if os.path.exists(stream_train_node_file_name):
+                    train_nodes = np.loadtxt(stream_train_node_file_name, dtype = np.int64, delimiter=',').tolist()
+                    val_nodes = np.loadtxt(stream_val_node_file_name, dtype = np.int64, delimiter=',').tolist()
+                    if tt < self.t:
+                        self.train_old_nodes_list.update(train_nodes)
+                        self.valid_old_nodes_list.update(val_nodes)
+                    elif tt == self.t:
+                        self.train_cha_nodes_list.update(train_nodes)
+                        self.valid_cha_nodes_list.update(val_nodes)
+                    with open(stream_edges_file_name) as fp:
+                        for i, line in enumerate(fp):
+                            info = line.strip().split(',')
+                            node1, node2 = int(info[0]), int(info[1])
+                            
+                            self.adj_lists[node1].add(node2)
+                            self.adj_lists[node2].add(node1)
+                else:
+                    with open(stream_edges_file_name) as fp:
+                        for i, line in enumerate(fp):
+                            info = line.strip().split(',')
+                            node1, node2 = int(info[0]), int(info[1])
 
-                    if tt <= end_time and tt >= begin_time:
-                        self._assign_node(node1, tt)
-                        self._assign_node(node2, tt)
+                            # self.nodes.add(node1)
+                            # self.nodes.add(node2)
+                            
+                            self._assign_node(node1, tt)
+                            self._assign_node(node2, tt)
 
-                        self.adj_lists[node1].add(node2)
-                        self.adj_lists[node2].add(node1)
+                            self.adj_lists[node1].add(node2)
+                            self.adj_lists[node2].add(node1)
         
         # Generate node and label list
         self.labels = np.ones(len(labels), dtype=np.int64)
