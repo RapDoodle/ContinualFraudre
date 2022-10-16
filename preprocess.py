@@ -170,8 +170,8 @@ def preprocess_dataset(args):
         stream_edges_path = os.path.join(stream_path, 'edges')
         stream_features_path = os.path.join(stream_path, 'features')
         stream_labels_path = os.path.join(stream_path, 'labels')
-        stream_train_nodes_path = os.path.join(stream_path, 'train')
-        stream_val_nodes_path = os.path.join(stream_path, 'val')
+        stream_train_nodes_path = os.path.join(stream_path, 'train_nodes')
+        stream_val_nodes_path = os.path.join(stream_path, 'val_nodes')
         
         # Edges
         logging.info('Determining the edges')
@@ -247,7 +247,7 @@ def preprocess_dataset(args):
             prev_j_time = -1
             count = 0
             while j < n:
-                if i % 500 == 0:
+                if j % 100 == 0:
                     print(f'USV {j}/{n}', end='\r')
                 i_time = j_time - args.usv_interval
                 # Move i to the correct position
