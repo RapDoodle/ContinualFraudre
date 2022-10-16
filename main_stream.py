@@ -164,7 +164,7 @@ if __name__ == "__main__":
     print_ans = ['', '', '', '']
     avg_ans = [0.0, 0.0, 0.0, 0.0]
 
-    t_num = len(os.listdir(os.path.join('./data', args.data, 'stream')))
+    t_num = len(os.listdir(os.path.join('./data', args.data, 'streams')))
     args.save_path = os.path.join('./res', args.data)
     
     for t in range(0, t_num):

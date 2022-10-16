@@ -31,23 +31,23 @@ class StreamDataHandler(DataHandler):
         self.valid_all_nodes_list = np.loadtxt(valid_file_name, dtype = np.int64, delimiter=',')
 
         # Load graph
-        stream_dir_name = os.path.join('./data', data_name, 'stream')
-        self.nodes = set()
+        stream_dir_name = os.path.join('./data', data_name, 'streams')
+        # self.nodes = set()
         self.train_cha_nodes_list, self.train_old_nodes_list = set(), set()
         self.valid_cha_nodes_list, self.valid_old_nodes_list = set(), set()
         self.adj_lists = defaultdict(set)
         
         begin_time = 0
         end_time = t
-        for tt in range(0, len(os.listdir(os.path.join('./data', data_name, 'stream')))):
-            edges_file_name = os.path.join(stream_dir_name, str(tt), 'edges')
-            with open(edges_file_name) as fp:
+        for tt in range(0, len(os.listdir(os.path.join('./data', data_name, 'streams')))):
+            stream_edges_file_name = os.path.join(stream_dir_name, str(tt), 'edges')
+            with open(stream_edges_file_name) as fp:
                 for i, line in enumerate(fp):
                     info = line.strip().split(',')
                     node1, node2 = int(info[0]), int(info[1])
 
-                    self.nodes.add(node1)
-                    self.nodes.add(node2)
+                    # self.nodes.add(node1)
+                    # self.nodes.add(node2)
 
                     if tt <= end_time and tt >= begin_time:
                         self._assign_node(node1, tt)
@@ -57,7 +57,8 @@ class StreamDataHandler(DataHandler):
                         self.adj_lists[node2].add(node1)
         
         # Generate node and label list
-        self.labels = np.ones(len(self.nodes), dtype=np.int64)
+        self.labels = np.ones(len(labels), dtype=np.int64)
+        # self.labels[labels[:, 0]] = labels[:, 1]
         self.labels[labels[:, 0]] = labels[:, 1]
 
         # Input & Output size
