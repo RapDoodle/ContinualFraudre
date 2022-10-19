@@ -6,6 +6,7 @@ import random
 import logging
 import time
 import numpy as np 
+from tqdm import tqdm
 from sklearn.metrics import f1_score, accuracy_score
 
 import torch
@@ -60,7 +61,7 @@ if __name__ == "__main__":
 
     # Model training
     times = []
-    for epoch in range(args.num_epochs):
+    for epoch in tqdm(range(args.num_epochs)):
         losses = 0
 
         nodes =  data.train_nodes

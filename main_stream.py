@@ -6,6 +6,7 @@ import logging
 import time
 import math
 import numpy as np 
+from tqdm import tqdm
 from sklearn.metrics import f1_score
 import warnings
 warnings.filterwarnings("ignore")
@@ -26,7 +27,7 @@ from extensions import memory_handler
 def train(data, model, args):
     # Model training
     times = []
-    for epoch in range(args.num_epochs):
+    for epoch in tqdm(range(args.num_epochs)):
         losses = 0
         start_time = time.time()
 
