@@ -25,7 +25,6 @@ from extensions import memory_handler
 
 
 def train(data, model, args):
-    logging.debug(f'Data size: {len(data)}')
     # Model training
     times = []
     for epoch in tqdm(range(args.num_epochs)):
