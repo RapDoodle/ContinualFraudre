@@ -544,7 +544,7 @@ if __name__ == '__main__':
     parser.add_argument(
         '--corpus-sim-percentile',
         type=float,
-        default=99.95,
+        default=95,
         help='Corpus similarity percentile. Should be a float between 0 and 100.0.'
     )
     parser.add_argument(
