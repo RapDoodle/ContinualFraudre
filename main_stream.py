@@ -25,6 +25,7 @@ from extensions import memory_handler
 
 
 def train(data, model, args):
+    logging.debug(f'Epoch {str(epoch)} data size: {len(data)}')
     # Model training
     times = []
     for epoch in tqdm(range(args.num_epochs)):
@@ -171,6 +172,8 @@ if __name__ == "__main__":
     for t in range(0, t_num):
         logging.info('-------- Time ' + str(t) + ' --------')
         if args.eval == False:
+            if args.cuda:
+                torch.cuda.empty_cache()
             b = run(args, t)
         else:
             b = 0
