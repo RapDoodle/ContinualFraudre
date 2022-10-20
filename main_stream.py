@@ -61,7 +61,7 @@ def train(data, model, args):
 def run(args, t):
     # Data loader
     data = StreamDataHandler()
-    data.load(args.data, t)
+    data.load(args.data, t, args.max_detect_size)
     logging.info('Number of ALL Nodes / Edges: ' + str(len(data.adj_lists)) \
     + ' / ' + str(sum([len(v) for v in data.adj_lists.values()]) / 2))
     logging.info('Data: ' + data.data_name + '; Data size: ' + str(data.data_size) \

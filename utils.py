@@ -11,27 +11,29 @@ def parse_argument():
     # data options
     parser.add_argument('--data', type = str, default = 'cora')
     
-    parser.add_argument('--num_epochs', type = int, default = 100)
-    parser.add_argument('--batch_size', type = int, default = 128)
+    parser.add_argument('--num-epochs', type = int, default = 100)
+    parser.add_argument('--batch-size', type = int, default = 128)
     parser.add_argument('--seed', type = int, default = 13)
     parser.add_argument('--cuda', action = 'store_true', help = 'use CUDA')
-    parser.add_argument('--num_neg_samples', type = int, default = 10)
-    parser.add_argument('--num_layers', type = int, default = 2)
-    parser.add_argument('--embed_size', type = int, default = 64)
-    parser.add_argument('--learning_rate', type = float, default = 0.1)
+    parser.add_argument('--num-neg-samples', type = int, default = 10)
+    parser.add_argument('--num-layers', type = int, default = 2)
+    parser.add_argument('--embed-size', type = int, default = 64)
+    parser.add_argument('--learning-rate', type = float, default = 0.1)
 
-    parser.add_argument('--detect_strategy', type = str, default = 'bfs')  # 'simple' / 'bfs'
-    parser.add_argument('--new_ratio', type = float, default = 0.0)
+    parser.add_argument('--detect-strategy', type = str, default = 'bfs')  # 'simple' / 'bfs'
+    parser.add_argument('--new-ratio', type = float, default = 0.0)
 
-    parser.add_argument('--memory_size', type = int, default = 0)
-    parser.add_argument('--memory_strategy', type = str, default = 'class')   # 'random' / 'class'
+    parser.add_argument('--memory-size', type = int, default = 0)
+    parser.add_argument('--memory-strategy', type = str, default = 'class')   # 'random' / 'class'
     parser.add_argument('--p', type = float, default = 1)
     parser.add_argument('--alpha', type = float, default = 0.0)
     
-    parser.add_argument('--ewc_lambda', type = float, default = 0.0)
-    parser.add_argument('--ewc_type', type = str, default = 'ewc')  # 'l2' / 'ewc'
+    parser.add_argument('--ewc-lambda', type = float, default = 0.0)
+    parser.add_argument('--ewc-type', type = str, default = 'ewc')  # 'l2' / 'ewc'
 
     parser.add_argument('--eval', action = 'store_true')
+
+    parser.add_argument('--max-detect-size', type = int, default = None)
 
     args = parser.parse_args()
 

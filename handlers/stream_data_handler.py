@@ -12,7 +12,7 @@ class StreamDataHandler(DataHandler):
     def __init__(self):
         super(StreamDataHandler, self).__init__()
 
-    def load(self, data_name, t):
+    def load(self, data_name, t, lo_t=None):
         self.data_name = data_name
         self.t = t
 
@@ -37,7 +37,7 @@ class StreamDataHandler(DataHandler):
         self.valid_cha_nodes_list, self.valid_old_nodes_list = set(), set()
         self.adj_lists = defaultdict(set)
         
-        begin_time = 0
+        begin_time = 0 if lo_t is None else t - lo_t
         end_time = t
         for tt in range(0, len(os.listdir(os.path.join('./data', data_name, 'streams')))):
             stream_edges_file_name = os.path.join(stream_dir_name, str(tt), 'edges')

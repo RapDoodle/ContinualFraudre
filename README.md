@@ -7,7 +7,7 @@ The code of this project is based on [Streaming Graph Neural Networks via Contin
 * ContinualGNN (proposed model) on Cora:
 ```
 cd src/
-python main_stream.py --data=cora --new_ratio=0.8 --memory_size=250 --ewc_lambda=80.0 
+python main_stream.py --data=cora --new-ratio=0.8 --memory-size=250 --ewc-lambda=80.0 
 ```
 * OnlineGNN (lower bound) on Cora:
 ```
