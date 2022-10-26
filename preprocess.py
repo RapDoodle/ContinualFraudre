@@ -364,13 +364,11 @@ def preprocess_dataset(args):
     if not os.path.exists(args.dataset_stream_path):
         os.mkdir(args.dataset_stream_path)
     
-    # Execute on multiple processes
-    pool = multiprocessing.Pool(args.num_workers)
-    func_args = []
+    # Calculate the intervals
+    intervals = []
     initial_size = int(full_df_size * args.initial_portion)
     if args.initial_portion > 0:
-        func_args.append((full_df.iloc[0:initial_size], '0', 0, initial_size, args))
-        # generate_stream('0', 0, initial_size, tfidf_features=tfidf_features)
+        intervals.append((0, initial_size))
     stream_size = full_df_size - initial_size
     stream_block_size = int(stream_size / args.num_streams)
     lo = initial_size
@@ -379,14 +377,31 @@ def preprocess_dataset(args):
             hi = full_df_size
         else:
             hi = min((lo + stream_block_size), full_df_size)
-        if args.initial_portion > 0:
-            set_label = str(i+1)
-        else:
-            set_label = str(i)
-        func_args.append((full_df.iloc[lo:hi], set_label, lo, hi, args))
-        # generate_stream(set_label, lo, hi, tfidf_features=tfidf_features)
+        intervals.append((lo, hi))
         lo = hi
+        
+    if len(intervals) <= 0:
+        logging.error('Empty list of intervals')
+        exit()
+        
+    def generate_and_append_interval_func_args(lo, hi):
+        func_args.append((full_df.iloc[lo:hi], str(len(func_args)), lo, hi, args))
 
+    # Calculate the arguments for each parallel call
+    func_args = []
+    for i in range(0, len(intervals)-1):
+        lo = intervals[i][0]
+        hi = intervals[i][1]
+        generate_and_append_interval_func_args(lo, hi)
+        if not args.no_interleave:
+            interleave_lo = int((lo+hi) / 2)
+            interleave_hi = int((intervals[i+1][0] + intervals[i+1][1]) / 2)
+            generate_and_append_interval_func_args(interleave_lo, interleave_hi)
+    # The last interval
+    generate_and_append_interval_func_args(intervals[-1][0], intervals[-1][1])
+
+    # Execute on multiple processes
+    pool = multiprocessing.Pool(args.num_workers)
     exec_result = pool.starmap(compute_features_list, func_args)
 
     if args.feature_schema == '01':
@@ -501,6 +516,12 @@ if __name__ == '__main__':
         action='store_true',
         default=False,
         help='Consider a review as fradulent if no vote is provided.'
+    )
+    parser.add_argument(
+        '--no-interleave',
+        action='store_true',
+        default=False,
+        help='Disable generating interleaves between streams.'
     )
     parser.add_argument(
         '--relation-policy',
