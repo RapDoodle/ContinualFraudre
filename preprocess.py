@@ -1,10 +1,12 @@
 import os
 import re
+import json
 import random
 import datetime
 import argparse
 import logging
 import shutil
+import collections
 import multiprocessing
 from itertools import combinations
 
@@ -35,32 +37,6 @@ def y_n_choice(msg='Do you want to continue?', default_choice=False):
         if choice.lower() == 'n':
             return False
         # Case: unkown, continue
-
-# FILENAME = 'Musical_Instruments_5.json'
-# FILENAME = 'Apps_for_Android_5.json'
-# DATASET_NAME = 'amazon_android_apps'
-# INITIAL_PORTION = 0.0 # A number between 0 and 1
-# STREAMS = 75 -> NUM_STREAMS
-
-# FRAUDULENT_THRESHOLD = 0.2
-# FRAUDULENT_ON_DEFAULT = False
-
-# RELATION_POLICY = ['upu', 'usv', 'uvu']
-# RANDOM_SEED = 42
-# TRAIN_RATIO = 0.8
-
-# FEATURE_SCHEMA = '01'
-
-# MAX_FEATURES = 500
-
-# CORPUS_SIM_PERCENTILE = 99.95
-# SIM_REVIEW_MAX_DIFF = 1
-
-# USV_INTERVAL = 259200
-
-
-# helpful_vote_regex = re.compile(r'(?<=(\"helpful\": \[))\d{1,}, \d{1,}(?=(\]))')
-# int_extract_regex = re.compile(r'\d{1,}')
 
 
 def create_dataset_sorted_by_time(args):
@@ -158,6 +134,7 @@ def compute_features_list(curr_df, label, lo, hi, args):
     logging.info(f'Feature list for {label} is ready.')
     return True
 
+
 def generate_stream(curr_df, label, lo, hi, args):
     if hi - lo <= 0:
         return
@@ -168,19 +145,26 @@ def generate_stream(curr_df, label, lo, hi, args):
     if not os.path.exists(stream_path):
         os.mkdir(stream_path)
 
+    stream_statistics_path = os.path.join(stream_path, 'statistics')
     stream_edges_path = os.path.join(stream_path, 'edges')
+    stream_edges_adj_list_path = os.path.join(stream_path, 'adj_list')
     stream_features_path = os.path.join(stream_path, 'features')
     stream_features_list_path = os.path.join(stream_path, 'features_list')
     stream_labels_path = os.path.join(stream_path, 'labels')
     stream_train_nodes_path = os.path.join(stream_path, 'train_nodes')
     stream_val_nodes_path = os.path.join(stream_path, 'val_nodes')
-    
+
+    stats = []
+    # Record label, lo, hi
+    stats.append(f'label={label}\n')
+    stats.append(f'lo={lo}\n')
+    stats.append(f'hi={hi}\n')
     
     def add_edge(i, j):
+        i = int(i)
+        j = int(j)
         pair = (i, j) if i <= j else (j, i)
-        if pair not in edges_set:
-            edges_set.add(pair)
-            edges.append(f'{i},{j}\n')
+        edges_set.add(pair)
     
     """
     U-P-U: connects users reviewing at least one same product
@@ -205,6 +189,7 @@ def generate_stream(curr_df, label, lo, hi, args):
                     count = count + 1
                     add_edge(node_i, node_j)
             logging.info(f'UPU Discovered {count} relations')
+            stats.append(f'num_upu_relations={count}\n')
         else:
             logging.info('UPU Skipped due of 0 product size')
     
@@ -226,6 +211,7 @@ def generate_stream(curr_df, label, lo, hi, args):
                 add_edge(lo + ci1, lo + ci2)
                 count = count + 1
         logging.info(f'UVU Discovered {count} relations')
+        stats.append(f'num_uvu_relations={count}\n')
 
     """
     Connects users having at least one same star rating within a specified interval 
@@ -267,6 +253,7 @@ def generate_stream(curr_df, label, lo, hi, args):
 
             j = j + 1
         logging.info(f'USV Discovered {count} relations')
+        stats.append(f'num_usv_relations={count}\n')
     
     def feature_schema_01():
         stream_features_list_path = os.path.join(stream_path, 'features_list')
@@ -295,7 +282,6 @@ def generate_stream(curr_df, label, lo, hi, args):
     # Edges
     if not os.path.exists(stream_edges_path):
         logging.info('Determining the edges')
-        edges = []
         edges_set = set()
 
         if 'upu' in args.relation_policy:
@@ -304,15 +290,32 @@ def generate_stream(curr_df, label, lo, hi, args):
             usv()
         if 'uvu' in args.relation_policy:
             uvu()
-            
+        
+        # Output as v1,v2 (v1 < v2) for each edge
         with open(stream_edges_path, 'w') as f:
-            f.write("".join(edges))
+            f.write("".join([f'{v1},{v2}\n' for v1, v2 in list(edges_set)]))
+
+        # Create the adjacency list representation
+        adj_list = {}
+        for v_id in range(lo, hi+1):
+            adj_list[v_id] = []
+        for v1, v2 in edges_set:
+            adj_list[v1].append(v2)
+            adj_list[v2].append(v1)
+        adj_list = collections.OrderedDict(sorted(adj_list.items()))
+        with open(stream_edges_adj_list_path, 'w') as f:
+            f.write(json.dumps(adj_list))
+
         
     # Train-test split
     if not os.path.exists(stream_train_nodes_path) or not os.path.exists(stream_val_nodes_path): 
         logging.info('Splitting training and validation set')
         node_indices = [i for i in range(lo, hi)]
-        random.shuffle(node_indices)
+        try:
+            random.Random(args.random_seed+int(label)).random.shuffle(node_indices)
+        except:
+            logging.error(f'Unable to convert {label} to int')
+            random.shuffle(node_indices)
         split_index = int((hi-lo) * args.train_ratio)
         train_indices = node_indices[0:split_index]
         val_indices = node_indices[split_index:]
@@ -344,6 +347,10 @@ def generate_stream(curr_df, label, lo, hi, args):
         else:
             raise Exception('Unknown feature schema')
     
+    # Write statistics
+    with open(stream_statistics_path, 'w') as f:
+        f.write(''.join(stats))
+
     # Success
     return True
 
