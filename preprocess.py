@@ -113,7 +113,7 @@ def nlp_parse(args):
         logging.info(f'{args.parsed_filename} has been saved successfully.')
 
 
-def compute_features_list(curr_df, label, lo, hi, args):
+def compute_features_list(curr_df, label, lo, hi, args, _):
     if hi - lo <= 0:
         return
     logging.info(f'Computing feature list for {label} [{lo}, {hi}] (size: {hi-lo})')
@@ -135,7 +135,7 @@ def compute_features_list(curr_df, label, lo, hi, args):
     return True
 
 
-def generate_stream(curr_df, label, lo, hi, args):
+def generate_stream(curr_df, label, lo, hi, args, _):
     if hi - lo <= 0:
         return
     logging.info(f'Preprocessing block {label} [{lo}, {hi}] (size: {hi-lo})')
@@ -391,21 +391,21 @@ def preprocess_dataset(args):
         logging.error('Empty list of intervals')
         exit()
         
-    def generate_and_append_interval_func_args(lo, hi):
-        func_args.append((full_df.iloc[lo:hi], str(len(func_args)), lo, hi, args))
+    def generate_and_append_interval_func_args(lo, hi, interleave_flag=False):
+        func_args.append((full_df.iloc[lo:hi], str(len(func_args)), lo, hi, args, interleave_flag))
 
     # Calculate the arguments for each parallel call
     func_args = []
     for i in range(0, len(intervals)-1):
         lo = intervals[i][0]
         hi = intervals[i][1]
-        generate_and_append_interval_func_args(lo, hi)
+        generate_and_append_interval_func_args(lo, hi, interleave_flag=False)
         if not args.no_interleave:
             interleave_lo = int((lo+hi) / 2)
             interleave_hi = int((intervals[i+1][0] + intervals[i+1][1]) / 2)
-            generate_and_append_interval_func_args(interleave_lo, interleave_hi)
+            generate_and_append_interval_func_args(interleave_lo, interleave_hi, interleave_flag=True)
     # The last interval
-    generate_and_append_interval_func_args(intervals[-1][0], intervals[-1][1])
+    generate_and_append_interval_func_args(intervals[-1][0], intervals[-1][1], interleave_flag=False)
 
     # Execute on multiple processes
     pool = multiprocessing.Pool(args.num_workers)
@@ -452,6 +452,9 @@ def preprocess_dataset(args):
     logging.info('Merging streams')
     for func_arg in func_args:
         label = func_arg[1]
+        interleave_flag = func_arg[5]
+        if interleave_flag:
+            continue
         stream_path = os.path.join(args.dataset_path, 'streams', label)
         stream_features_path = os.path.join(stream_path, 'features')
         stream_labels_path = os.path.join(stream_path, 'labels')
