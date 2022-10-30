@@ -354,6 +354,20 @@ def generate_stream(curr_df, label, lo, hi, args, _):
     return True
 
 
+def concat_interleave_stream_nodes(path1, path2, lo, hi):
+    out_nodes = []
+    def partition(path):
+        with open(path, 'r') as f:
+            stream_nodes = f.read().strip().split('\n')
+        for stream_node in stream_nodes:
+            stream_node = int(stream_node)
+            if stream_node >= lo and stream_node <= hi:
+                out_nodes.append(stream_node)
+    partition(path1)
+    partition(path2)
+    return out_nodes
+
+
 def preprocess_dataset(args):
     # Read from the sorted and cleaned dataset
     full_df = pd.read_json(args.parsed_filepath, lines=True)
@@ -449,16 +463,43 @@ def preprocess_dataset(args):
     val_nodes_fp = open(val_nodes_path, 'w')
 
     logging.info('Merging streams')
-    for func_arg in func_args:
+    for i, func_arg in enumerate(func_args):
         label = func_arg[1]
         interleave_flag = func_arg[5]
+
+        stream_path = os.path.join(args.dataset_path, 'streams', label)
+        stream_train_nodes_path = os.path.join(stream_path, 'train_nodes')
+        stream_val_nodes_path = os.path.join(stream_path, 'val_nodes')
+
+        # Fix: Interleaving streams should not have independent train_nodes and val_nodes
         if interleave_flag:
+            prev_label = func_args[i-1][1]
+            next_label = func_args[i+1][1]
+
+            stream_lo = func_arg[2]
+            stream_hi = func_arg[3]
+
+            prev_stream_path = os.path.join(args.dataset_path, 'streams', prev_label)
+            prev_stream_train_nodes_path = os.path.join(prev_stream_path, 'train_nodes')
+            prev_stream_val_nodes_path = os.path.join(prev_stream_path, 'val_nodes')
+            next_stream_path = os.path.join(args.dataset_path, 'streams', next_label)
+            next_stream_train_nodes_path = os.path.join(next_stream_path, 'train_nodes')
+            next_stream_val_nodes_path = os.path.join(next_stream_path, 'val_nodes')
+
+            train_nodes = concat_interleave_stream_nodes(prev_stream_train_nodes_path, next_stream_train_nodes_path, stream_lo, stream_hi)
+            val_nodes = concat_interleave_stream_nodes(prev_stream_val_nodes_path, next_stream_val_nodes_path, stream_lo, stream_hi)
+
+            with open(stream_train_nodes_path, 'w') as f:
+                for node_index in train_nodes:
+                    f.write(f'{node_index}\n')
+            with open(stream_val_nodes_path, 'w') as f:
+                for node_index in val_nodes:
+                    f.write(f'{node_index}\n')
             continue
+
         stream_path = os.path.join(args.dataset_path, 'streams', label)
         stream_features_path = os.path.join(stream_path, 'features')
         stream_labels_path = os.path.join(stream_path, 'labels')
-        stream_train_nodes_path = os.path.join(stream_path, 'train_nodes')
-        stream_val_nodes_path = os.path.join(stream_path, 'val_nodes')
 
         with open(stream_features_path, 'r') as f:
             features_fp.write(f.read())
