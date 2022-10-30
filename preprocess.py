@@ -312,10 +312,9 @@ def generate_stream(curr_df, label, lo, hi, args, _):
         logging.info('Splitting training and validation set')
         node_indices = [i for i in range(lo, hi)]
         try:
-            random.Random(args.random_seed+int(label)).random.shuffle(node_indices)
+            random.Random(args.random_seed+int(label)).shuffle(node_indices)
         except:
             logging.error(f'Unable to convert {label} to int')
-            random.shuffle(node_indices)
         split_index = int((hi-lo) * args.train_ratio)
         train_indices = node_indices[0:split_index]
         val_indices = node_indices[split_index:]
