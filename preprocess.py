@@ -135,6 +135,18 @@ def compute_features_list(curr_df, label, lo, hi, args, _):
     return True
 
 
+def create_adj_list(edges_set, lo, hi, output_path):
+    adj_list = {}
+    for v_id in range(lo, hi+1):
+        adj_list[v_id] = []
+    for v1, v2 in edges_set:
+        adj_list[v1].append(v2)
+        adj_list[v2].append(v1)
+    adj_list = collections.OrderedDict(sorted(adj_list.items()))
+    with open(output_path, 'w') as f:
+        f.write(json.dumps(adj_list))
+
+
 def generate_stream(curr_df, label, lo, hi, args, _):
     if hi - lo <= 0:
         return
@@ -160,16 +172,33 @@ def generate_stream(curr_df, label, lo, hi, args, _):
     stats.append(f'lo={lo}\n')
     stats.append(f'hi={hi}\n')
     
-    def add_edge(i, j):
+    """
+    Arguments:
+        i: vertex index i
+        j: vertex index j
+        add_to_local: add to edges_set_local
+    """
+    def add_edge(i, j, add_to_local=False):
         i = int(i)
         j = int(j)
         pair = (i, j) if i <= j else (j, i)
         edges_set.add(pair)
+        if add_to_local:
+            edges_set_local.add(pair)
+
+    """
+    Reset edges_set_local
+    """
+    def reset_edges_local():
+        edges_set_local = set()
     
     """
     U-P-U: connects users reviewing at least one same product
     """
     def upu():
+        reset_edges_local()
+        upu_adj_list_path = os.path.join(stream_path, 'upu_adj_list')
+
         products = list(set(curr_df['asin'].values))
         n = len(products)
         if n > 0:
@@ -187,18 +216,23 @@ def generate_stream(curr_df, label, lo, hi, args, _):
                     assert(node_j < hi)
                     
                     count = count + 1
-                    add_edge(node_i, node_j)
-            logging.info(f'UPU Discovered {count} relations')
+                    add_edge(node_i, node_j, True)
+            logging.info(f'[{label}] UPU Discovered {count} relations')
             stats.append(f'num_upu_relations={count}\n')
         else:
-            logging.info('UPU Skipped due of 0 product size')
+            logging.info(f'[{label}] UPU Skipped due of 0 product size')
+        # Create adjacency list for upu
+        create_adj_list(edges_set_local, lo, hi, upu_adj_list_path)
     
     """
     Connects users with top mutual review text similarities (measured by TF-IDF) among all users.
     """
     def uvu():
+        reset_edges_local()
+        uvu_adj_list_path = os.path.join(stream_path, 'uvu_adj_list')
+
         # Use all words to calculate the TF-IDF score
-        logging.info('UVU Calculating TF-IDF scores...')
+        logging.info(f'[{label}] UVU Calculating TF-IDF scores...')
         vectorizer = TfidfVectorizer()
         corpus = curr_df['review'].values
         tfidf_matrix = vectorizer.fit_transform(corpus)
@@ -208,15 +242,20 @@ def generate_stream(curr_df, label, lo, hi, args, _):
         count = 0
         for ci1, ci2 in corpus_indices:
             if abs(curr_df.iloc[ci1].overall - curr_df.iloc[ci2].overall) <= args.sim_review_max_diff:
-                add_edge(lo + ci1, lo + ci2)
+                add_edge(lo + ci1, lo + ci2, True)
                 count = count + 1
-        logging.info(f'UVU Discovered {count} relations')
+        logging.info(f'[{label}] UVU Discovered {count} relations')
         stats.append(f'num_uvu_relations={count}\n')
+        # Create adjacency list for uvu
+        create_adj_list(edges_set_local, lo, hi, uvu_adj_list_path)
 
     """
     Connects users having at least one same star rating within a specified interval 
     """       
     def usv():
+        reset_edges_local()
+        usv_adj_list_path = os.path.join(stream_path, 'usv_adj_list')
+
         # Sliding window approach
         # if hi - lo <= 0:
         i, j, n = 0, 0, curr_df.shape[0]
@@ -245,15 +284,17 @@ def generate_stream(curr_df, label, lo, hi, args, _):
                 for ni1, ni2 in combinations(nodes, 2):
                     if int(curr_df.iloc[ni1]['overall']) == int(curr_df.iloc[ni2]['overall']):
                         count = count + 1
-                        add_edge(lo+ni1, lo+ni2)
+                        add_edge(lo+ni1, lo+ni2, True)
 
             if j + 1 < n:
                 prev_j_time = j_time
                 j_time = curr_df.iloc[j+1]['unixReviewTime']
 
             j = j + 1
-        logging.info(f'USV Discovered {count} relations')
+        logging.info(f'[{label}] USV Discovered {count} relations')
         stats.append(f'num_usv_relations={count}\n')
+        # Create adjacency list for usv
+        create_adj_list(edges_set_local, lo, hi, usv_adj_list_path)
     
     def feature_schema_01():
         stream_features_list_path = os.path.join(stream_path, 'features_list')
@@ -281,8 +322,9 @@ def generate_stream(curr_df, label, lo, hi, args, _):
 
     # Edges
     if not os.path.exists(stream_edges_path):
-        logging.info('Determining the edges')
+        logging.info(f'[{label}] Determining the edges')
         edges_set = set()
+        edges_set_local = set()
 
         if 'upu' in args.relation_policy:
             upu()
@@ -296,20 +338,12 @@ def generate_stream(curr_df, label, lo, hi, args, _):
             f.write("".join([f'{v1},{v2}\n' for v1, v2 in list(edges_set)]))
 
         # Create the adjacency list representation
-        adj_list = {}
-        for v_id in range(lo, hi+1):
-            adj_list[v_id] = []
-        for v1, v2 in edges_set:
-            adj_list[v1].append(v2)
-            adj_list[v2].append(v1)
-        adj_list = collections.OrderedDict(sorted(adj_list.items()))
-        with open(stream_edges_adj_list_path, 'w') as f:
-            f.write(json.dumps(adj_list))
+        create_adj_list(edges_set, lo, hi, stream_edges_adj_list_path)
 
         
     # Train-test split
     if not os.path.exists(stream_train_nodes_path) or not os.path.exists(stream_val_nodes_path): 
-        logging.info('Splitting training and validation set')
+        logging.info(f'[{label}] Splitting training and validation set')
         node_indices = [i for i in range(lo, hi)]
         try:
             random.Random(args.random_seed+int(label)).shuffle(node_indices)
@@ -327,7 +361,7 @@ def generate_stream(curr_df, label, lo, hi, args, _):
 
     # Write labels
     if not os.path.exists(stream_labels_path):
-        logging.info('Determining labels')
+        logging.info(f'[{label}] Determining labels')
         labels = []
         for ri, row in curr_df.iterrows():
             if row['helpful'][1] == 0:
@@ -340,7 +374,7 @@ def generate_stream(curr_df, label, lo, hi, args, _):
 
     # Features
     if not os.path.exists(stream_features_path):
-        logging.info('Processing node features')
+        logging.info(f'[{label}] Processing node features')
         if args.feature_schema == '01':
             feature_schema_01()
         else:
