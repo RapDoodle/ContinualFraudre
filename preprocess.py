@@ -1,6 +1,7 @@
 import os
 import re
 import json
+import pickle
 import random
 import datetime
 import argparse
@@ -17,6 +18,7 @@ from nltk.corpus import stopwords
 from nltk.stem.porter import PorterStemmer
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
+from sentence_transformers import SentenceTransformer
 
 
 # Configure the logger
@@ -106,7 +108,8 @@ def nlp_parse(args):
             review = ' '.join(words_list)
             corpus.append(review)
         full_df['review'] = corpus
-        full_df.drop(columns=['reviewText', 'summary'], inplace=True)
+        # full_df.drop(columns=['reviewText', 'summary'], inplace=True)
+        full_df.drop(columns=['summary'], inplace=True)
         
         logging.info(f'Writing {args.parsed_filename}')
         full_df.to_json(args.parsed_filepath, lines=True, orient='records')
@@ -142,9 +145,8 @@ def create_adj_list(edges_set, lo, hi, output_path):
     for v1, v2 in edges_set:
         adj_list[v1].append(v2)
         adj_list[v2].append(v1)
-    adj_list = collections.OrderedDict(sorted(adj_list.items()))
-    with open(output_path, 'w') as f:
-        f.write(json.dumps(adj_list))
+    with open(output_path, 'wb') as f:
+        pickle.dump(adj_list, f, protocol=pickle.HIGHEST_PROTOCOL)
 
 
 def generate_stream(curr_df, label, lo, hi, args, _):
@@ -159,7 +161,7 @@ def generate_stream(curr_df, label, lo, hi, args, _):
 
     stream_statistics_path = os.path.join(stream_path, 'statistics')
     stream_edges_path = os.path.join(stream_path, 'edges')
-    stream_edges_adj_list_path = os.path.join(stream_path, 'adj_list')
+    stream_edges_adj_list_path = os.path.join(stream_path, 'adj_list.pkl')
     stream_features_path = os.path.join(stream_path, 'features')
     stream_features_list_path = os.path.join(stream_path, 'features_list')
     stream_labels_path = os.path.join(stream_path, 'labels')
@@ -197,7 +199,7 @@ def generate_stream(curr_df, label, lo, hi, args, _):
     """
     def upu():
         reset_edges_local()
-        upu_adj_list_path = os.path.join(stream_path, 'upu_adj_list')
+        upu_adj_list_path = os.path.join(stream_path, 'upu_adj_list.pkl')
 
         products = list(set(curr_df['asin'].values))
         n = len(products)
@@ -229,7 +231,7 @@ def generate_stream(curr_df, label, lo, hi, args, _):
     """
     def uvu():
         reset_edges_local()
-        uvu_adj_list_path = os.path.join(stream_path, 'uvu_adj_list')
+        uvu_adj_list_path = os.path.join(stream_path, 'uvu_adj_list.pkl')
 
         # Use all words to calculate the TF-IDF score
         logging.info(f'[{label}] UVU Calculating TF-IDF scores...')
@@ -254,7 +256,7 @@ def generate_stream(curr_df, label, lo, hi, args, _):
     """       
     def usv():
         reset_edges_local()
-        usv_adj_list_path = os.path.join(stream_path, 'usv_adj_list')
+        usv_adj_list_path = os.path.join(stream_path, 'usv_adj_list.pkl')
 
         # Sliding window approach
         # if hi - lo <= 0:
@@ -320,6 +322,15 @@ def generate_stream(curr_df, label, lo, hi, args, _):
         
         assert(i == hi-lo - 1)
 
+    def feature_schema_sentence_embedding():
+        model = SentenceTransformer('all-MiniLM-L6-v2')
+
+        # Our sentences we like to encode
+        sentences = curr_df['reviewText'].values
+        embeddings = model.encode(sentences)
+        with open(stream_features_path, 'w') as feature_fp:
+            np.savetxt(feature_fp, embeddings, delimiter=',', fmt='%s', comments='')
+
     # Edges
     if not os.path.exists(stream_edges_path):
         logging.info(f'[{label}] Determining the edges')
@@ -377,6 +388,8 @@ def generate_stream(curr_df, label, lo, hi, args, _):
         logging.info(f'[{label}] Processing node features')
         if args.feature_schema == '01':
             feature_schema_01()
+        elif args.feature_schema == 'sentence_embeddings':
+            feature_schema_sentence_embedding()
         else:
             raise Exception('Unknown feature schema')
     
@@ -632,7 +645,7 @@ if __name__ == '__main__':
         default='01',
         type=str,
         help='Schema used to extract features.',
-        choices=['01']
+        choices=['01', 'sentence_embeddings']
     )
     parser.add_argument(
         '--num-features',
