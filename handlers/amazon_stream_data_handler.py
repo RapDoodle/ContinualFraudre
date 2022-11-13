@@ -64,7 +64,7 @@ class AmazonStreamDataHandler(StreamDataHandler):
             out_adj_list = {}
             for node, adj in adj_list.items():
                 out_adj_list[node-lo] = (np.array(adj_list[node])-lo).tolist()
-            self.adj_list = out_adj_list
+            self.stream_adj_list = out_adj_list
 
         # print(self.X_train.shape, self.X_val.shape, self.y_train.shape, self.y_val.shape)
 
@@ -124,9 +124,9 @@ class AmazonStreamDataHandler(StreamDataHandler):
             if random.random() < pr:
                 curr_node = root_node
                 continue
-            curr_node_adj_list_len = len(self.adj_list[curr_node])
+            curr_node_adj_list_len = len(self.stream_adj_list[curr_node])
             if curr_node_adj_list_len > 0:
-                next_node = self.adj_list[curr_node][random.randint(0, curr_node_adj_list_len-1)]
+                next_node = self.stream_adj_list[curr_node][random.randint(0, curr_node_adj_list_len-1)]
                 # Add the edge i->j (i < j)
                 if next_node != curr_node:
                     # In case the adjacency list contains self-loop
