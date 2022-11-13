@@ -47,15 +47,15 @@ class AmazonStreamDataHandler(StreamDataHandler):
         self.stream_labels = np.loadtxt(stream_labels_path, dtype = np.int64, delimiter=',')[:, 1]
 
         # Obtain train-test split
-        self.train_nodes = np.loadtxt(stream_train_nodes_path, dtype = np.int64, delimiter=',') - self.stream_stats['lo']
-        self.val_nodes = np.loadtxt(stream_val_nodes_path, dtype = np.int64, delimiter=',') - self.stream_stats['lo']
+        self.stream_train_nodes = np.loadtxt(stream_train_nodes_path, dtype = np.int64, delimiter=',') - self.stream_stats['lo']
+        self.stream_val_nodes = np.loadtxt(stream_val_nodes_path, dtype = np.int64, delimiter=',') - self.stream_stats['lo']
 
         # Load the features
-        self.features = np.loadtxt(stream_features_path, delimiter=',')
-        # self.X_train = features[self.train_nodes, :]
-        # self.X_val = features[self.val_nodes, :]
-        self.y_train = self.stream_labels[self.train_nodes]
-        self.y_val = self.stream_labels[self.val_nodes]
+        self.stream_features = np.loadtxt(stream_features_path, delimiter=',')
+        # self.stream_X_train = features[self.train_nodes, :]
+        # self.stream_X_val = features[self.val_nodes, :]
+        self.stream_y_train = self.stream_labels[self.stream_train_nodes]
+        self.stream_y_val = self.stream_labels[self.stream_val_nodes]
 
         # Load adjacency list
         lo = self.stream_stats['lo']
@@ -83,7 +83,7 @@ class AmazonStreamDataHandler(StreamDataHandler):
 
         lo = self.stream_stats['lo']
 
-        self.relations = {}
+        self.stream_relations = {}
         stream_base_path = os.path.join('./data', self.data_name, 'streams', str(self.t))
         
         for relation in relations:
@@ -93,7 +93,7 @@ class AmazonStreamDataHandler(StreamDataHandler):
                 out_adj_list = {}
                 for node, adj in adj_list.items():
                     out_adj_list[node-lo] = (np.array(adj_list[node])-lo).tolist()
-                self.relations[relation] = out_adj_list
+                self.stream_relations[relation] = out_adj_list
 
     """
     Sample a graph with random-walk-with-restrart
@@ -140,5 +140,6 @@ class AmazonStreamDataHandler(StreamDataHandler):
         for node1, node2 in edges:
             adj_list[node1].append(node2)
             adj_list[node2].append(node1)
-        return list(nodes), adj_list
+        nodes_list = list(nodes)
+        return nodes_list, adj_list, self.stream_features[nodes_list]
 
