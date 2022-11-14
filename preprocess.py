@@ -254,14 +254,14 @@ def generate_stream(curr_df, label, lo, hi, args, _):
     """
     Connects users having at least one same star rating within a specified interval 
     """       
-    def usv():
+    def usu():
         reset_edges_local()
-        usv_adj_list_path = os.path.join(stream_path, 'usv_adj_list.pkl')
+        usu_adj_list_path = os.path.join(stream_path, 'usu_adj_list.pkl')
 
         # Sliding window approach
         # if hi - lo <= 0:
         i, j, n = 0, 0, curr_df.shape[0]
-        i_time, j_time = -1, curr_df.iloc[0]['unixReviewTime'] + args.usv_interval
+        i_time, j_time = -1, curr_df.iloc[0]['unixReviewTime'] + args.usu_interval
 
         # Move j to the appropriate position (initial offset)
         while j < n and curr_df.iloc[j]['unixReviewTime'] < j_time:
@@ -273,13 +273,13 @@ def generate_stream(curr_df, label, lo, hi, args, _):
         count = 0
         while j < n:
             if j % 100 == 0:
-                print(f'USV {j}/{n}', end='\r')
-            i_time = j_time - args.usv_interval
+                print(f'USU {j}/{n}', end='\r')
+            i_time = j_time - args.usu_interval
             # Move i to the correct position
             while i < j and curr_df.iloc[i]['unixReviewTime'] < i_time:
                 i = i + 1
 
-            assert(curr_df.iloc[j]['unixReviewTime'] - curr_df.iloc[i]['unixReviewTime'] <= args.usv_interval)
+            assert(curr_df.iloc[j]['unixReviewTime'] - curr_df.iloc[i]['unixReviewTime'] <= args.usu_interval)
             # Create edges for all nodes in the range
             if j_time > prev_j_time and j - i >= 1:
                 nodes = [x for x in range(i, j+1)]
@@ -293,10 +293,10 @@ def generate_stream(curr_df, label, lo, hi, args, _):
                 j_time = curr_df.iloc[j+1]['unixReviewTime']
 
             j = j + 1
-        logging.info(f'[{label}] USV Discovered {count} relations')
-        stats.append(f'num_usv_relations={count}\n')
-        # Create adjacency list for usv
-        create_adj_list(edges_set_local, lo, hi, usv_adj_list_path)
+        logging.info(f'[{label}] USU Discovered {count} relations')
+        stats.append(f'num_usu_relations={count}\n')
+        # Create adjacency list for usu
+        create_adj_list(edges_set_local, lo, hi, usu_adj_list_path)
     
     def feature_schema_01():
         stream_features_list_path = os.path.join(stream_path, 'features_list')
@@ -339,8 +339,8 @@ def generate_stream(curr_df, label, lo, hi, args, _):
 
         if 'upu' in args.relation_policy:
             upu()
-        if 'usv' in args.relation_policy:
-            usv()
+        if 'usu' in args.relation_policy:
+            usu()
         if 'uvu' in args.relation_policy:
             uvu()
         
@@ -623,7 +623,7 @@ if __name__ == '__main__':
     parser.add_argument(
         '--relation-policy',
         metavar='STRING',
-        default='upu,usv,uvu',
+        default='upu,usu,uvu',
         type=str,
         help='Relation schema separated by comma (,).'
     )
@@ -672,10 +672,10 @@ if __name__ == '__main__':
         help='Tolerance for difference in rating.'
     )
     parser.add_argument(
-        '--usv-interval',
+        '--usu-interval',
         type=int,
         default=259200,
-        help='USV interval. Unit: Unix epoch time.'
+        help='USU interval. Unit: Unix epoch time.'
     )
     parser.add_argument(
         '--origin-path',
@@ -696,7 +696,7 @@ if __name__ == '__main__':
     # relation_policy
     args.relation_policy = args.relation_policy.split(',')
     for policy in args.relation_policy:
-        if policy not in ['upu', 'usv', 'uvu']:
+        if policy not in ['upu', 'usu', 'uvu']:
             logging.error(f'Unknown relation policy named {policy}')
     # num_workers
     if args.num_workers is None:
