@@ -47,7 +47,7 @@ def create_dataset_sorted_by_time(args):
     args.sorted_filename = out_fn
     args.sorted_filepath = os.path.join(args.origin_path, out_fn)
 
-    if not os.path.exists(args.sorted_filepath):
+    if args.clean or not os.path.exists(args.sorted_filepath):
         logging.info(f'Creating a sorted version of {args.filename}...')
         unix_review_time_extract_regex = re.compile(r'(?<=(\"unixReviewTime\": ))\d{1,}')
 
@@ -84,7 +84,7 @@ def nlp_parse(args):
     args.parsed_filename = out_fn
     args.parsed_filepath = os.path.join(args.origin_path, out_fn)
 
-    if not os.path.exists(args.parsed_filepath):
+    if args.clean or not os.path.exists(args.parsed_filepath):
         logging.info(f'Parsing dataset {args.filename} for natural language processing...')
 
         # Download stopwords
@@ -324,7 +324,7 @@ def generate_stream(curr_df, label, lo, hi, args, _):
         assert(i == hi-lo-1)
 
     def feature_schema_sentence_embedding():
-        model = SentenceTransformer('all-MiniLM-L6-v2')
+        model = SentenceTransformer('all-MiniLM-L6-v2', device='cuda' if args.cuda else 'cpu')
 
         # Our sentences we like to encode
         sentences = curr_df['reviewText'].values
@@ -683,6 +683,18 @@ if __name__ == '__main__':
         default=None,
         type=int,
         help='Path to the origin dataset.'
+    )
+    parser.add_argument(
+        '--cuda',
+        action='store_true',
+        default=False,
+        help='Use CUDA for sentence embedding calculation.'
+    )
+    parser.add_argument(
+        '--clean',
+        action='store_true',
+        default=False,
+        help='Clean generation of intermediate files.'
     )
     args = parser.parse_args()
 
