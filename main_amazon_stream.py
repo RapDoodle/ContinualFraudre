@@ -14,16 +14,20 @@ warnings.filterwarnings("ignore")
 import torch
 import torch.nn as nn
 from torch.autograd import Variable
+from sklearn.metrics import f1_score, recall_score, roc_auc_score, average_precision_score, precision_score
 
 import utils
 from models.graph_sage import GraphSAGE
 from models.ewc import EWC
+from models.fraudre import Fraudre
+from models.fraudre import create_fraudre
 from handlers.stream_data_handler import StreamDataHandler
+from handlers.amazon_stream_data_handler import AmazonStreamDataHandler
 from handlers.model_handler import ModelHandler
 from extensions import detection
 from extensions import memory_handler
 
-MODEL_PKL_FILE = 'graph_sage.pkl'
+MODEL_PKL_FILE = 'fraudre.pkl'
 
 
 def train(data, model, args):
@@ -37,17 +41,19 @@ def train(data, model, args):
         np.random.shuffle(nodes)
         for batch in range(len(nodes) // args.batch_size):
             batch_nodes = nodes[batch * args.batch_size : (batch + 1) * args.batch_size]
+            # print(batch_nodes)
             batch_labels = torch.LongTensor(data.labels[np.array(batch_nodes)]).to(args.device)
 
             model.optimizer.zero_grad()
-            loss = model.loss(batch_nodes, batch_labels)
+            
+            loss = model.loss(batch_nodes, batch_labels, args.skip_ewc)
             loss.backward()
             model.optimizer.step()
 
             loss_val = loss.data.item()
             losses += loss_val * len(batch_nodes)
             if (np.isnan(loss_val)):
-                logging.error('Loss Val is NaN !!!')
+                logging.error('Loss is NaN')
                 sys.exit()
         
         if epoch % 10 == 0:
@@ -62,8 +68,11 @@ def train(data, model, args):
 
 def run(args, t):
     # Data loader
-    data = StreamDataHandler()
-    data.load(args.data, t, args.max_detect_size)
+    data = AmazonStreamDataHandler(data_name=args.data, t=t, max_detect_size=args.max_detect_size)
+    data.load()
+    data.load_stream()
+    data.load_streams_relations()
+    
     if args.normalize:
         data.features = utils.normalize(data.features)
     logging.info(f'Number of nodes: {len(data.adj_lists)}, edges: {sum([len(v) for v in data.adj_lists.values()]) / 2}')
@@ -73,27 +82,28 @@ def run(args, t):
 
 
     if args.new_ratio > 0.0 and t > 0:
-        data.train_new_nodes_list = detection.detect(data, t, args, args.model_pkl_file)
+        data.train_new_nodes_list = detection.detect(data, t, args)
         data.train_nodes = list(set(data.train_nodes + data.train_new_nodes_list)) if len(data.train_new_nodes_list) > 0 else data.train_nodes
     else:
         detect_time = 0
-
-    # Sage layers
-    layers = [data.feature_size] + [args.embed_size] * args.num_layers + [data.label_size]
     
-    # GraphSAGE definition & initialization
-    sage = GraphSAGE(layers, data.features, data.adj_lists, args)
+    # FRADURE definition & initialization
+    gnn_model = create_fraudre(args, data)
+    if args.cuda:
+        gnn_model.cuda()
+
+    # fradure = GraphSAGE(layers, data.features, data.adj_lists, args)
 
     # Load model parameters from file
     if t > 0:
         model_handler_pre = ModelHandler(os.path.join(args.save_path, str(t - 1)))
         if not model_handler_pre.not_exist():
-            sage.load_state_dict(model_handler_pre.load(args.model_pkl_file))
+            gnn_model.load_state_dict(model_handler_pre.load(args.model_pkl_file))
         
     if t > 0:
-        ewc_model = EWC(sage, args.ewc_lambda, args.ewc_type).to(args.device)
+        ewc_model = EWC(gnn_model, args.ewc_lambda, args.ewc_type).to(args.device)
 
-        # whether use memory to store important nodes
+        # Whether to use memory to store important nodes
         if args.memory_size > 0:
             memory_h = memory_handler.load('M', args)
             important_nodes_list = memory_h.memory
@@ -102,24 +112,25 @@ def run(args, t):
         else:
             important_nodes_list = data.train_old_nodes_list
             
-        # calculate weight importance
+        # Calculate weight importance
         ewc_model.register_ewc_params(important_nodes_list, torch.LongTensor(data.labels[important_nodes_list]).to(args.device))
     else:
         if args.memory_size > 0:
             memory_h = memory_handler.MemoryHandler(args)
-        ewc_model = sage.to(args.device)
+        ewc_model = gnn_model.to(args.device)
             
     # Train
-    ewc_model.optimizer = torch.optim.SGD(sage.parameters(), lr = args.learning_rate)
+    # ewc_model.optimizer = torch.optim.SGD(gnn_model.parameters(), lr = args.learning_rate)
+    ewc_model.optimizer = torch.optim.Adam(filter(lambda p: p.requires_grad, gnn_model.parameters()), lr=args.learning_rate, weight_decay=args.lambda_1)
     avg_time = train(data, ewc_model, args)
 
     # Model save
     model_handler_cur = ModelHandler(os.path.join(args.save_path, str(t)))
-    model_handler_cur.save(sage.state_dict(), args.model_pkl_file)
+    model_handler_cur.save(gnn_model.state_dict(), args.model_pkl_file)
 
     # Memory save
     if args.memory_size > 0:
-        train_output = sage.forward(data.train_nodes).data.cpu().numpy()
+        train_output = gnn_model.to_prob(data.train_nodes).cpu().detach().numpy()
         memory_h.update(data.train_nodes, x=train_output, y=data.labels, adj_lists=data.adj_lists)
         memory_handler.save(memory_h, 'M')
 
@@ -128,28 +139,44 @@ def run(args, t):
 
 def evaluate(args, t):
     # Data loader
-    data = StreamDataHandler()
-    data.load(args.data, t)
+    data = AmazonStreamDataHandler(data_name=args.data, t=t, max_detect_size=args.max_detect_size)
+    data.load()
     if args.normalize:
         data.features = utils.normalize(data.features)
 
-    # Sage layers
-    layers = [data.feature_size] + [args.embed_size] * args.num_layers + [data.label_size]
-    
-    # GraphSAGE definition
-    sage = GraphSAGE(layers, data.features, data.adj_lists, args).to(args.device)
+    data.load_stream()
+    data.load_streams_relations()
+    gnn_model = create_fraudre(args, data)
+    if args.cuda:
+        gnn_model.cuda()
 
-    # GraphSAGE load
+    # Load model
     model_handler_cur = ModelHandler(os.path.join(args.save_path, str(t)))
-    sage.load_state_dict(model_handler_cur.load(args.model_pkl_file))
+    gnn_model.load_state_dict(model_handler_cur.load(args.model_pkl_file))
 
     val_nodes = data.val_nodes
 
     if len(val_nodes) == 0:
         return 0, 0
 
-    valid_output = sage.forward(val_nodes).data.cpu().numpy().argmax(axis=1)
-    f1, acc = utils.node_classification(data.labels[val_nodes], valid_output, '')
+    # valid_output = gnn_model.forward(val_nodes).data.cpu().numpy().argmax(axis=1)
+    # f1, acc = utils.node_classification(data.labels[val_nodes], valid_output, '')
+    gnn_prob = gnn_model.to_prob(val_nodes, train_flag = False)
+
+    auc_gnn = roc_auc_score(data.labels[val_nodes], gnn_prob.data.cpu().numpy()[:,1].tolist())
+    precision_gnn = precision_score(data.labels[val_nodes], gnn_prob.data.cpu().numpy().argmax(axis=1), average="macro")
+    a_p = average_precision_score(data.labels[val_nodes], gnn_prob.data.cpu().numpy()[:,1].tolist())
+    recall_gnn = recall_score(data.labels[val_nodes], gnn_prob.data.cpu().numpy().argmax(axis=1), average="macro")
+    f1 = f1_score(data.labels[val_nodes], gnn_prob.data.cpu().numpy().argmax(axis=1), average="macro")
+
+    #print(gnn_prob.data.cpu().numpy().argmax(axis=1))
+
+    print(f"GNN auc: {auc_gnn:.4f}")
+    print(f"GNN precision: {precision_gnn:.4f}")
+    print(f"GNN a_precision: {a_p:.4f}")
+    print(f"GNN Recall: {recall_gnn:.4f}")
+    print(f"GNN f1: {f1:.4f}")
+    acc = 0
 
     return f1, acc
 
@@ -167,7 +194,7 @@ if __name__ == "__main__":
     torch.manual_seed(args.seed)
     args.device = utils.check_device(args.cuda)
     args.model_pkl_file = MODEL_PKL_FILE
-    args.train_type = 'stream'
+    args.train_type = 'amazon_stream'
 
     # f1, acc, time, detect_time
     print_ans = ['', '', '', '']

@@ -5,7 +5,7 @@ The code of this project is based on [Streaming Graph Neural Networks via Contin
 ## Usage 
 
 ### Installation
-Install the dependencies
+Install dependencies
 ```
 pip install -r requirements.txt
 ```
@@ -25,7 +25,7 @@ Please first download the Amazon Review Dataset (2014) from [here](http://jmcaul
 
 Generate the preprocessed dataset. Here, we are using `reviews_Amazon_Instant_Video_5.json` as an example.
 ```
-python preprocess.py --filename=reviews_Amazon_Instant_Video_5.json --dataset-name=amazon_instant_video --num-streams=15 --corpus-sim-percentile=95 --usv-interval=259200 --total-features=2000 --num-features=1000 --fradulent-threshold=0.3
+python preprocess.py --filename=reviews_Amazon_Instant_Video_5.json --dataset-name=amazon_instant_video --num-streams=15 --corpus-sim-percentile=95 --usu-interval=259200 --total-features=2000 --num-features=1000 --fradulent-threshold=0.5 --feature-schema=sentence_embeddings
 ```
 
 ### Training

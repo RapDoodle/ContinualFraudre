@@ -10,6 +10,7 @@ import torch
 from handlers.stream_data_handler import StreamDataHandler
 from handlers.model_handler import ModelHandler
 from models.graph_sage import GraphSAGE
+from models.fraudre import create_fraudre
 
 
 def detect(data, t, args):
@@ -71,9 +72,14 @@ def load_model(data, t, args):
         return None
     
     # Load model
-    layers = [data.feature_size] + [args.embed_size] * args.num_layers + [data.label_size]
-    model = GraphSAGE(layers, data.features, data.adj_lists, args).to(args.device)
-    model.load_state_dict(model_handler.load('graph_sage.pkl'))
+    if args.train_type == 'stream':
+        layers = [data.feature_size] + [args.embed_size] * args.num_layers + [data.label_size]
+        model = GraphSAGE(layers, data.features, data.adj_lists, args).to(args.device)
+    elif args.train_type == 'amazon_stream':
+        model = create_fraudre(args, data)
+    else:
+        raise Exception('unknown train type')
+    model.load_state_dict(model_handler.load(args.model_pkl_file))
     return model
 
 

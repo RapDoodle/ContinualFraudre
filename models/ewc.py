@@ -7,6 +7,9 @@ from torch import autograd
 import numpy as np
 import logging
 
+from models.fraudre import Fraudre
+from models.graph_sage import GraphSAGE
+
 
 class EWC(nn.Module):
 
@@ -55,9 +58,12 @@ class EWC(nn.Module):
                 losses.append((estimated_fisher * (param - estimated_mean) ** 2).sum())
         return 1 * (self.ewc_lambda / 2) * sum(losses)
 
-    def loss(self, nodes, labels):
+    def loss(self, nodes, labels, skip_ewc=False):
         loss1 = self.model.loss(nodes, labels)
-        loss2 = self._compute_consolidation_loss()
+        if skip_ewc:
+            loss2 = 0
+        else:
+            loss2 = self._compute_consolidation_loss()
         loss = loss1 + loss2
         return loss
 
