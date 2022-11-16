@@ -134,21 +134,23 @@ def run(args, t):
         memory_h.update(data.train_nodes, x=train_output, y=data.labels, adj_lists=data.adj_lists)
         memory_handler.save(memory_h, 'M')
 
-    return avg_time
+    return avg_time, gnn_model, data
 
 
-def evaluate(args, t):
-    # Data loader
-    data = AmazonStreamDataHandler(data_name=args.data, t=t, max_detect_size=args.max_detect_size)
-    data.load()
-    if args.normalize:
-        data.features = utils.normalize(data.features)
+def evaluate(args, t, data=None, gnn_model=None):
+    if data is None:
+        # Data loader
+        data = AmazonStreamDataHandler(data_name=args.data, t=t, max_detect_size=args.max_detect_size)
+        data.load()
+        data.load_stream()
+        data.load_streams_relations()
+        if args.normalize:
+            data.features = utils.normalize(data.features)
 
-    data.load_stream()
-    data.load_streams_relations()
-    gnn_model = create_fraudre(args, data)
-    if args.cuda:
-        gnn_model.cuda()
+    if gnn_model is None:
+        gnn_model = create_fraudre(args, data)
+        if args.cuda:
+            gnn_model.cuda()
 
     # Load model
     model_handler_cur = ModelHandler(os.path.join(args.save_path, str(t)))
@@ -159,24 +161,8 @@ def evaluate(args, t):
     if len(val_nodes) == 0:
         return 0, 0
 
-    # valid_output = gnn_model.forward(val_nodes).data.cpu().numpy().argmax(axis=1)
-    # f1, acc = utils.node_classification(data.labels[val_nodes], valid_output, '')
-    gnn_prob = gnn_model.to_prob(val_nodes, train_flag = False)
-
-    auc_gnn = roc_auc_score(data.labels[val_nodes], gnn_prob.data.cpu().numpy()[:,1].tolist())
-    precision_gnn = precision_score(data.labels[val_nodes], gnn_prob.data.cpu().numpy().argmax(axis=1), average="macro")
-    a_p = average_precision_score(data.labels[val_nodes], gnn_prob.data.cpu().numpy()[:,1].tolist())
-    recall_gnn = recall_score(data.labels[val_nodes], gnn_prob.data.cpu().numpy().argmax(axis=1), average="macro")
-    f1 = f1_score(data.labels[val_nodes], gnn_prob.data.cpu().numpy().argmax(axis=1), average="macro")
-
-    #print(gnn_prob.data.cpu().numpy().argmax(axis=1))
-
-    print(f"GNN auc: {auc_gnn:.4f}")
-    print(f"GNN precision: {precision_gnn:.4f}")
-    print(f"GNN a_precision: {a_p:.4f}")
-    print(f"GNN Recall: {recall_gnn:.4f}")
-    print(f"GNN f1: {f1:.4f}")
-    acc = 0
+    valid_output = gnn_model.to_prob(val_nodes).data.cpu().numpy().argmax(axis=1)
+    f1, acc = utils.node_classification(data.labels[val_nodes], valid_output, '')    
 
     return f1, acc
 
@@ -209,11 +195,11 @@ if __name__ == "__main__":
         if args.eval == False:
             if args.cuda:
                 torch.cuda.empty_cache()
-            b = run(args, t)
+            b, gnn_model, data = run(args, t)
+            a = evaluate(args, t, data=data, gnn_model=gnn_model)
         else:
             b = 0
-
-        a = evaluate(args, t)
+            a = evaluate(args, t)
         print_ans[0] += str(a[0]) + '\t'
         print_ans[1] += str(a[1]) + '\t'
         print_ans[2] += str(b) + '\t'

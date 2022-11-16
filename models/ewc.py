@@ -19,20 +19,34 @@ class EWC(nn.Module):
         self.ewc_lambda = ewc_lambda
         self.ewc_type = ewc_type
 
+    def _get_model_parameters(self):
+        parameters = []
+        for param in self.model.parameters():
+            if param.requires_grad:
+                parameters.append(param)
+        return parameters
+
+    def _get_model_named_parameters(self):
+        parameters = []
+        for name, param in self.model.named_parameters():
+            if param.requires_grad:
+                parameters.append((name, param))
+        return parameters
+
     def _update_mean_params(self):
-        for param_name, param in self.model.named_parameters():
+        for param_name, param in self._get_model_named_parameters():
             _buff_param_name = param_name.replace('.', '__')
             self.register_buffer(_buff_param_name + '_estimated_mean', param.data.clone())
 
     def _update_fisher_params(self, nodes, labels):
         log_likelihood = self.model.loss(nodes, labels)
-        grad_log_liklihood = autograd.grad(log_likelihood, self.model.parameters())
-        _buff_param_names = [param[0].replace('.', '__') for param in self.model.named_parameters()]
+        grad_log_liklihood = autograd.grad(log_likelihood, self._get_model_parameters())
+        _buff_param_names = [param[0].replace('.', '__') for param in self._get_model_named_parameters()]
         for _buff_param_name, param in zip(_buff_param_names, grad_log_liklihood):
             self.register_buffer(_buff_param_name + '_estimated_fisher', param.data.clone() ** 2)
 
     def _save_fisher_params(self):
-        for param_name, param in self.model.named_parameters():
+        for param_name, param in self._get_model_named_parameters():
             _buff_param_name = param_name.replace('.', '__')
             estimated_mean = getattr(self, '{}_estimated_mean'.format(_buff_param_name))
             estimated_fisher = np.array(getattr(self, '{}_estimated_fisher'.format(_buff_param_name)))
@@ -41,14 +55,13 @@ class EWC(nn.Module):
             print(np.mean(estimated_fisher), np.max(estimated_fisher), np.min(estimated_fisher))
             break
 
-
     def register_ewc_params(self, nodes, labels):
         self._update_fisher_params(nodes, labels)
         self._update_mean_params()
 
     def _compute_consolidation_loss(self):
         losses = []
-        for param_name, param in self.model.named_parameters():
+        for param_name, param in self._get_model_named_parameters():
             _buff_param_name = param_name.replace('.', '__')
             estimated_mean = getattr(self, '{}_estimated_mean'.format(_buff_param_name))
             estimated_fisher = getattr(self, '{}_estimated_fisher'.format(_buff_param_name))

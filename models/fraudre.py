@@ -6,12 +6,12 @@ import math
 
 from layers.sampler import Sampler
 from layers.mlp import FraudreMLP
-from layers.inter_agg import InterAgg
+from layers.inter_agg import InterAgg, InterAgg1, InterAgg2
 from layers.intra_agg import IntraAgg
 
 class Fraudre(nn.Module):
 
-    def __init__(self, K, num_classes, embed_dim, agg, prior, adj_lists=None):
+    def __init__(self, K, num_classes, embed_dim, agg: InterAgg, prior: list, adj_lists=None):
         super(Fraudre, self).__init__()
 
         """
@@ -46,9 +46,9 @@ class Fraudre(nn.Module):
         init.xavier_uniform_(self.weight_model)
         init.xavier_uniform_(self.weight_model2)
 
-    def forward(self, nodes, train_flag = True):
+    def forward(self, nodes, train_flag=True):
 
-        embedding = self.agg(nodes, train_flag)
+        embedding = self.agg.forward(nodes, train_flag)
 
         scores_model = embedding.mm(self.weight_model)
         scores_model = self.fun(scores_model)
@@ -112,14 +112,14 @@ def create_fraudre(args, data):
     intra1_1 = IntraAgg(cuda=args.cuda)
     intra1_2 = IntraAgg(cuda=args.cuda)
     intra1_3 = IntraAgg(cuda=args.cuda)
-    agg1 = InterAgg(lambda nodes: mlp(nodes), args.embed_dim, adj_lists, [intra1_1, intra1_2, intra1_3], cuda=args.cuda)
+    agg1 = InterAgg1(mlp, args.embed_dim, adj_lists, [intra1_1, intra1_2, intra1_3], cuda=args.cuda)
 
     # Second convolution layer
     intra2_1 = IntraAgg(cuda=args.cuda)
     intra2_2 = IntraAgg(cuda=args.cuda)
     intra2_3 = IntraAgg(cuda=args.cuda)
-    agg2 = InterAgg(lambda nodes: agg1(nodes), args.embed_dim*2, adj_lists, [intra2_1, intra2_2, intra2_3], cuda=args.cuda)
-    
+    agg2 = InterAgg2(agg1, args.embed_dim*2, adj_lists, [intra2_1, intra2_2, intra2_3], cuda=args.cuda)
+
     gnn_model = Fraudre(2, 2, args.embed_dim, agg2, prior, data.adj_lists)
 
     return gnn_model

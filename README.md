@@ -29,6 +29,13 @@ python preprocess.py --filename=reviews_Amazon_Instant_Video_5.json --dataset-na
 ```
 
 ### Training
+
+ContinualFradure
+```
+python main_amazon_stream.py --data=amazon_instant_video --new-ratio=0.8 --memory-size=1000 --ewc-lambda=80.0 --max-detect-size=16 --batch-size=512 --num-epochs=60 --learning-rate=0.001
+```
+
+ContinualGNN
 ```
 python main_stream.py --data=amazon_instant_video --new-ratio=0.6 --memory-size=1000 --ewc-lambda=80.0 --max-detect-size=16 --batch-size=64 --num-epochs=75
 ```
