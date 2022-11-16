@@ -152,6 +152,7 @@ def create_adj_list(edges_set, lo, hi, output_path):
 def generate_stream(curr_df, label, lo, hi, args, _):
     if hi - lo <= 0:
         return
+    # assert(curr_df.shape[0] == hi-lo+1, f'Dataframe with size {curr_df.shape} does not have {hi-lo+1} entires for interval {lo}-{hi}')
     logging.info(f'Preprocessing block {label} [{lo}, {hi}] (size: {hi-lo})')
 
     stream_path = os.path.join(args.dataset_path, 'streams', label)
@@ -213,9 +214,9 @@ def generate_stream(curr_df, label, lo, hi, args, _):
                 node_indices = list(curr_df[curr_df.asin == product].index)
                 for node_i, node_j in combinations(node_indices, 2):
                     assert(node_i >= lo)
-                    assert(node_i < hi)
+                    assert(node_i <= hi)
                     assert(node_j >= lo)
-                    assert(node_j < hi)
+                    assert(node_j <= hi)
                     
                     count = count + 1
                     add_edge(node_i, node_j, True)
@@ -320,7 +321,7 @@ def generate_stream(curr_df, label, lo, hi, args, _):
         with open(stream_features_path, 'w') as feature_fp:
             np.savetxt(feature_fp, features, delimiter=',', fmt='%s', comments='')
         
-        assert(i == hi-lo - 1)
+        assert(i == hi-lo-1)
 
     def feature_schema_sentence_embedding():
         model = SentenceTransformer('all-MiniLM-L6-v2')
@@ -355,7 +356,7 @@ def generate_stream(curr_df, label, lo, hi, args, _):
     # Train-test split
     if not os.path.exists(stream_train_nodes_path) or not os.path.exists(stream_val_nodes_path): 
         logging.info(f'[{label}] Splitting training and validation set')
-        node_indices = [i for i in range(lo, hi)]
+        node_indices = [i for i in range(lo, hi+1)]
         try:
             random.Random(args.random_seed+int(label)).shuffle(node_indices)
         except:
@@ -433,26 +434,19 @@ def preprocess_dataset(args):
     
     # Calculate the intervals
     intervals = []
-    initial_size = int(full_df_size * args.initial_portion)
-    if args.initial_portion > 0:
-        intervals.append((0, initial_size))
-    stream_size = full_df_size - initial_size
-    stream_block_size = int(stream_size / args.num_streams)
-    lo = initial_size
+    stream_block_size = int(full_df_size / args.num_streams)
+    lo = 0
     for i in range(args.num_streams):
-        if i == args.num_streams - 1:
-            hi = full_df_size
-        else:
-            hi = min((lo + stream_block_size), full_df_size)
+        hi = min((lo + stream_block_size), full_df_size - 1)
         intervals.append((lo, hi))
-        lo = hi
+        lo = hi + 1
         
     if len(intervals) <= 0:
         logging.error('Empty list of intervals')
         exit()
         
     def generate_and_append_interval_func_args(lo, hi, interleave_flag=False):
-        func_args.append((full_df.iloc[lo:hi], str(len(func_args)), lo, hi, args, interleave_flag))
+        func_args.append((full_df.iloc[lo:hi+1], str(len(func_args)), lo, hi, args, interleave_flag))
 
     # Calculate the arguments for each parallel call
     func_args = []
