@@ -15,9 +15,6 @@ class AmazonStreamDataHandler(StreamDataHandler):
     def load(self, **kwargs):
         super().load(**kwargs)
 
-    """
-    Note: All stream retrieved using this method has indices starting from 0
-    """
     def load_stream(self, t=None, reset_index=False):
         if t is not None:
             self.t = t

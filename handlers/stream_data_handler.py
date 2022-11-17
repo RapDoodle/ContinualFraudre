@@ -6,6 +6,7 @@ import logging
 import random
 from collections import defaultdict
 
+from utils import read_stream_statistics
 from .data_handler import DataHandler
 
 class StreamDataHandler(DataHandler):
@@ -15,6 +16,8 @@ class StreamDataHandler(DataHandler):
         self.data_name = data_name
         self.t = t
         self.max_detect_size = max_detect_size
+        self.lo = None
+        self.hi = None
 
     def load(self, data_name=None, t=None, max_detect_size=None):
         if data_name is not None:
@@ -52,6 +55,17 @@ class StreamDataHandler(DataHandler):
             stream_val_node_file_name = os.path.join(stream_dir_name, str(tt), 'val_nodes')
 
             if tt <= end_time and tt >= begin_time:
+                stream_stat_file_name = os.path.join(stream_dir_name, str(tt), 'statistics')
+                if os.path.exists(stream_stat_file_name):
+                    stats = read_stream_statistics(stream_stat_file_name)
+                    if self.lo is None:
+                        self.lo = stats['lo']
+                    if self.hi  is None:
+                        self.hi = stats['hi']
+                    self.lo = min(self.lo, stats['lo'])
+                    self.hi = max(self.hi, stats['hi'])
+                
+                # Load adj_list
                 stream_adj_list_file_name = os.path.join(stream_dir_name, str(tt), 'adj_list.pkl')
                 if os.path.exists(stream_train_node_file_name):
                     train_nodes = np.loadtxt(stream_train_node_file_name, dtype = np.int64, delimiter=',').tolist()

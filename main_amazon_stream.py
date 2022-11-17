@@ -76,9 +76,7 @@ def run(args, t):
     if args.normalize:
         data.features = utils.normalize(data.features)
     logging.info(f'Number of nodes: {len(data.adj_lists)}, edges: {sum([len(v) for v in data.adj_lists.values()]) / 2}')
-    logging.info('Data: ' + data.data_name + '; Data size: ' + str(data.data_size) \
-    + '; Train size: ' + str(len(data.train_nodes)) \
-    + '; Valid size: ' + str(len(data.val_nodes)))
+    logging.info(f'Data: {data.data_name}; Size: {data.data_size}; Data range: [{data.lo}, {data.hi}]; Train size: {len(data.train_nodes)}; Valid size: {len(data.val_nodes)}')
 
 
     if args.new_ratio > 0.0 and t > 0:
@@ -106,7 +104,8 @@ def run(args, t):
         # Whether to use memory to store important nodes
         if args.memory_size > 0:
             memory_h = memory_handler.load('M', args)
-            important_nodes_list = memory_h.memory
+            # Forget control
+            important_nodes_list = [i for i in memory_h.memory if (i >= data.lo and i <= data.hi)]
             data.train_nodes = list(set(data.train_nodes + important_nodes_list))
             logging.info('Important Data Size: ' + str(len(important_nodes_list)) + ' / ' + str(len(data.train_nodes)))
         else:
