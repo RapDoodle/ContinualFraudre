@@ -73,7 +73,7 @@ def run(args, t):
 
 
     if args.new_ratio > 0.0 and t > 0:
-        data.train_new_nodes_list = detection.detect(data, t, args, args.model_pkl_file)
+        data.train_new_nodes_list = detection.detect(data, t, args)
         data.train_nodes = list(set(data.train_nodes + data.train_new_nodes_list)) if len(data.train_new_nodes_list) > 0 else data.train_nodes
     else:
         detect_time = 0
