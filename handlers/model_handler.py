@@ -22,5 +22,5 @@ class ModelHandler(object):
 
     def save(self, model_dict, model_name):
         if not os.path.exists(self.path):
-            os.makedirs(self.path)
+            os.mkdir(self.path)
         torch.save(model_dict, os.path.join(self.path, model_name))

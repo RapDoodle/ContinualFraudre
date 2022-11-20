@@ -42,8 +42,8 @@ class AmazonStreamDataHandler(StreamDataHandler):
         self.stream_features = np.loadtxt(stream_features_path, delimiter=',')
         # self.stream_X_train = features[self.train_nodes, :]
         # self.stream_X_val = features[self.val_nodes, :]
-        self.stream_y_train = self.stream_labels[np.array(self.stream_train_nodes) - (0 if reset_index else self.stream_stats['lo'])]
-        self.stream_y_val = self.stream_labels[np.array(self.stream_val_nodes) - (0 if reset_index else self.stream_stats['lo'])]
+        self.stream_y_train = self.stream_labels[self.stream_train_nodes - (0 if reset_index else self.stream_stats['lo'])]
+        self.stream_y_val = self.stream_labels[self.stream_val_nodes - (0 if reset_index else self.stream_stats['lo'])]
 
         # Load adjacency list
         offset = (self.stream_stats['lo'] if reset_index else 0)
@@ -54,7 +54,10 @@ class AmazonStreamDataHandler(StreamDataHandler):
                 out_adj_list[node-offset] = (np.array(adj_list[node])-offset).tolist()
             self.stream_adj_list = out_adj_list
 
-        # print(self.X_train.shape, self.X_val.shape, self.y_train.shape, self.y_val.shape)
+        self.stream_train_nodes = self.stream_train_nodes.tolist()
+        self.stream_val_nodes = self.stream_val_nodes.tolist()
+        self.stream_y_train = self.stream_y_train.tolist()
+        self.stream_y_val = self.stream_y_val.tolist()
 
     """
     Load relations for a given stream. 

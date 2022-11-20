@@ -85,7 +85,7 @@ class Fraudre(nn.Module):
 
 def create_fraudre(args, data):
     # Calculate the prior
-    y_train = data.stream_y_train
+    y_train = np.array(data.stream_y_train)
     num_1 = len(np.where(y_train == 1)[0])
     num_2 = len(np.where(y_train == 0)[0])
     p0 = (num_1 / (num_1 + num_2))
