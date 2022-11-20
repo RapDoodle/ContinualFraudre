@@ -324,10 +324,9 @@ def generate_stream(curr_df, label, lo, hi, args, _):
         assert(i == hi-lo-1)
 
     def feature_schema_sentence_embedding():
-        sorted_df = pd.read_json(args.sorted_filepath, lines=True).iloc[lo:hi+1]
         model = SentenceTransformer('all-MiniLM-L6-v2', device='cuda' if args.cuda else 'cpu')
 
-        sentences = [f"{summary}. {reviewText}" for summary, reviewText in zip(sorted_df['summary'].values, sorted_df['reviewText'].values)]
+        sentences = curr_df['reviewText'].values
         embeddings = model.encode(sentences)
         with open(stream_features_path, 'w') as feature_fp:
             np.savetxt(feature_fp, embeddings, delimiter=',', fmt='%s', comments='')
