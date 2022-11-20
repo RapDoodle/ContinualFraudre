@@ -326,8 +326,7 @@ def generate_stream(curr_df, label, lo, hi, args, _):
     def feature_schema_sentence_embedding():
         model = SentenceTransformer('all-MiniLM-L6-v2', device='cuda' if args.cuda else 'cpu')
 
-        # Our sentences we like to encode
-        sentences = curr_df['reviewText'].values
+        sentences = [f"{summary}. {reviewText}" for summary, reviewText in zip(curr_df['summary'].values, curr_df['reviewText'].values)]
         embeddings = model.encode(sentences)
         with open(stream_features_path, 'w') as feature_fp:
             np.savetxt(feature_fp, embeddings, delimiter=',', fmt='%s', comments='')
