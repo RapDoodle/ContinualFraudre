@@ -43,6 +43,10 @@ def parse_argument():
     parser.add_argument('--test-epochs', type=int, default=10, help='Epoch interval to run test set.')
     parser.add_argument('--skip-ewc', action = 'store_true', default = False)
 
+    parser.add_argument('--check-point', type = int, default = None)
+    parser.add_argument('--log-only', action = 'store_true', default = False)
+    parser.add_argument('--val-stream-size', type = int, default = None)
+
     args = parser.parse_args()
 
     return args
