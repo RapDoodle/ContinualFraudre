@@ -120,17 +120,17 @@ def run(args, t):
         ewc_model = gnn_model.to(args.device)
             
     # Train
-    # ewc_model.optimizer = torch.optim.SGD(gnn_model.parameters(), lr = args.learning_rate)
-    ewc_model.optimizer = torch.optim.Adam(filter(lambda p: p.requires_grad, gnn_model.parameters()), lr=args.learning_rate, weight_decay=args.lambda_1)
+    ewc_model.optimizer = torch.optim.SGD(gnn_model.parameters(), lr = args.learning_rate)
+    # ewc_model.optimizer = torch.optim.Adam(filter(lambda p: p.requires_grad, gnn_model.parameters()), lr=args.learning_rate, weight_decay=args.lambda_1)
     avg_time = train(data, ewc_model, args)
-
-    # Evaluate only on the current stream
-    logging.info('Evaluating on current stream')
-    evaluate(args, t, data=data, gnn_model=gnn_model, val_nodes=data.stream_val_nodes, stream_mode=True)
 
     # Model save
     model_handler_cur = ModelHandler(os.path.join(args.save_path, str(t)))
     model_handler_cur.save(gnn_model.state_dict(), args.model_pkl_file)
+
+    # Evaluate only on the current stream
+    logging.info('Evaluating on current stream')
+    evaluate(args, t, data=data, gnn_model=gnn_model, val_nodes=data.stream_val_nodes, stream_mode=True)
 
     # Memory save
     if args.memory_size > 0:
