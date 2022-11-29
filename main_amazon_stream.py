@@ -47,7 +47,7 @@ def train(data, model, args):
 
             model.optimizer.zero_grad()
             
-            loss = model.loss(batch_nodes, batch_labels, args.skip_ewc)
+            loss = model.loss(batch_nodes, batch_labels, True)
             loss.backward()
             model.optimizer.step()
 

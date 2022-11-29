@@ -25,19 +25,20 @@ Please first download the Amazon Review Dataset (2014) from [here](http://jmcaul
 
 Generate the preprocessed dataset. Here, we are using `reviews_Amazon_Instant_Video_5.json` as an example.
 ```
-python preprocess.py --filename=reviews_Amazon_Instant_Video_5.json --dataset-name=amazon_instant_video --num-streams=15 --corpus-sim-percentile=95 --usu-interval=259200 --total-features=2000 --num-features=1000 --fradulent-threshold=0.5 --feature-schema=sentence_embeddings
+python preprocess.py --filename=reviews_Amazon_Instant_Video_5.json --dataset-name=amazon_instant_video --num-streams=15 --corpus-sim-percentile=95 --usu-interval=259200 --fradulent-threshold=0.5 --feature-schema=sentence_embeddings
 ```
 
 ### Training
 
 ContinualFraudre
 ```
-python main_amazon_stream.py --data=amazon_instant_video --new-ratio=0.8 --memory-size=1000 --ewc-lambda=80.0 --max-detect-size=16 --batch-size=512 --num-epochs=60 --learning-rate=0.001
+python main_amazon_stream.py --data=amazon_instant_video --new-ratio=0.8 --memory-size=1000 --ewc-lambda=80.0 --max-detect-size=
+8 --batch-size=512 --num-epochs=60 --learning-rate=0.1
 ```
 
 ContinualGNN
 ```
-python main_stream.py --data=amazon_instant_video --new-ratio=0.6 --memory-size=1000 --ewc-lambda=80.0 --max-detect-size=16 --batch-size=64 --num-epochs=75
+python main_stream.py --data=amazon_instant_video --new-ratio=0.8 --memory-size=1000 --ewc-lambda=80.0 --max-detect-size=8 --batch-size=512 --num-epochs=60 --learning-rate=0.001
 ```
 
 ## Cora

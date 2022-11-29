@@ -40,7 +40,7 @@ def train(data, model, args):
             batch_labels = torch.LongTensor(data.labels[np.array(batch_nodes)]).to(args.device)
 
             model.optimizer.zero_grad()
-            loss = model.loss(batch_nodes, batch_labels, args.skip_ewc)
+            loss = model.loss(batch_nodes, batch_labels)
             loss.backward()
             model.optimizer.step()
 
